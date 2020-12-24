@@ -30,7 +30,7 @@ resource "aws_security_group" "nginx" {
 
 # EC2 instances
 resource "aws_instance" "cluster_member" {
-  count = "${var.cluster_member_count}"
+  count = var.cluster_member_count
   ami                         = "ami-0015b9ef68c77328d"
   subnet_id                   = var.subnet_id
   instance_type               = "t2.micro"
@@ -41,22 +41,24 @@ resource "aws_instance" "cluster_member" {
 
 # Bash command to populate /etc/hosts file on each instances
 resource "null_resource" "provision_cluster_member_hosts_file" {
-  count = "${var.cluster_member_count}"
+  count = var.cluster_member_count
 
   # Changes to any instance of the cluster requires re-provisioning
-  triggers {
+  triggers = {
     cluster_instance_ids = "${join(",", aws_instance.cluster_member.*.id)}"
   }
   connection {
     type = "ssh"
     host = "${element(aws_instance.cluster_member.*.public_ip, count.index)}"
     user = "centos"
-    private_key = "${file(var.aws_keypair_privatekey_filepath)}"
+    private_key = file(var.private_key_path)
   }
   provisioner "remote-exec" {
     inline = [
       # Adds all cluster members' IP addresses to /etc/hosts (on each member)
       "echo '${join("\n", formatlist("%v", aws_instance.cluster_member.*.private_ip))}' | awk 'BEGIN{ print \"\\n\\n# Cluster members:\" }; { print $0 \" ${var.cluster_member_name_prefix}\" NR-1 }' | sudo tee -a /etc/hosts > /dev/null",
+      "sudo yum install docker chroyd -y",
+      "sudo systemctl restart docker && sudo systemctl restart chronyd",
     ]
   }
 }
