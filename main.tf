@@ -36,6 +36,10 @@ resource "aws_instance" "cluster_member" {
   instance_type               = "t2.micro"
   associate_public_ip_address = true
   security_groups             = [aws_security_group.nginx.id]
+  user_data                   = << EOF
+                                  #!/bin/bash
+                                  hostnamectl set-hostname ${var.vluster_member_name_prefix}-[count.index]
+                                  EOF
   key_name                    = var.key_name
 }
 
@@ -57,8 +61,9 @@ resource "null_resource" "provision_cluster_member_hosts_file" {
     inline = [
       # Adds all cluster members' IP addresses to /etc/hosts (on each member)
       "echo '${join("\n", formatlist("%v", aws_instance.cluster_member.*.private_ip))}' | awk 'BEGIN{ print \"\\n\\n# Cluster members:\" }; { print $0 \" ${var.cluster_member_name_prefix}\" NR-1 }' | sudo tee -a /etc/hosts > /dev/null",
-      "sudo yum install docker chroyd -y",
+      "sudo yum install docker chrony -y > /dev/null",
       "sudo systemctl restart docker && sudo systemctl restart chronyd",
+      
     ]
   }
 }
