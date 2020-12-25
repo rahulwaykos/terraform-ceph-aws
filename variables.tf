@@ -24,7 +24,7 @@ variable "cluster_member_count" {
 }
 variable "cluster_member_name_prefix" {
   description = "Prefix to use when naming cluster members"
-  default = "cluster-node-"
+  default = "node-"
 }
 variable "aws_keypair_privatekey_filepath" {
   description = "Path to SSH private key to SSH-connect to instances"
