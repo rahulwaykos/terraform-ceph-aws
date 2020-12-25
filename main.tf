@@ -129,8 +129,8 @@ resource "null_resource" "set_hostname_0" {
   connection {
     type = "ssh"
     host = "${element(aws_instance.cluster_member.*.public_ip, 0)}"
-    user = "centos"
-    private_key = file(var.private_key_path)
+    user = "root"
+    password = "redhat"
   }
 
   provisioner "remote-exec" {
@@ -140,23 +140,24 @@ resource "null_resource" "set_hostname_0" {
       "sudo hostnamectl set-hostname node-0 ",
       "curl --silent --remote-name --location https://github.com/ceph/ceph/raw/octopus/src/cephadm/cephadm",
       "chmod +x cephadm",
-      "sudo ./cephadm add-repo --release octopus",
-      "sudo ./cephadm install",
-      "sudo mkdir -p /etc/ceph",
+      "sudo -s ./cephadm add-repo --release octopus",
+      "sudo -s ./cephadm install",
+      "sudo -s mkdir -p /etc/ceph",
       "node0=$(cut -d \" \" -f 1 /etc/hosts | tail -3 | head -1)",
       "node1=$(cut -d \" \" -f 1 /etc/hosts | tail -2 | head -1 )",
       "node2=$(cut -d \" \" -f 1 /etc/hosts | tail -1)",
-      "sudo cephadm bootstrap --mon-ip $node0 ",
-      "sudo cephadm add-repo --release octopus",
-      "sudo cephadm install ceph-common",
-      "sudo sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-0",
-      "sudo sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-1",
-      "sudo sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-2",
-      "alias ceph=\"cephadm shell -- ceph\"",
-      "sudo ceph orch host add node-1 $node1",
-      "sudo ceph orch host add node-2 $node2",
-      "sudo ceph orch apply mon node-1 node-2",
-      "sudo ceph orch apply osd --all-available-devices",
+     # "sudo -s cephadm bootstrap --mon-ip $node0 ",
+     # "sudo -s cephadm add-repo --release octopus",
+     # "sudo -s cephadm install ceph-common",
+     # "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-0",
+     # "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-1",
+     # "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-2",
+     # "alias ceph=\"cephadm shell -- ceph\"",
+     # "sudo -s ceph orch host add node-1 $node1",
+     # "sudo -s ceph orch host add node-2 $node2",
+     # "sudo -s ceph orch apply mon 3",
+     # "sudo -s ceph orch apply mon node-0,node-1,node-2",
+     # "sudo -s ceph orch apply osd --all-available-devices",
     ]
   }
 }
