@@ -20,7 +20,7 @@ variable "private_key_path" {
 
 variable "cluster_member_count" {
   description = "Number of members in the cluster"
-  default = "3"
+  default = "5"
 }
 variable "cluster_member_name_prefix" {
   description = "Prefix to use when naming cluster members"
