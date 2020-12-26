@@ -32,7 +32,7 @@ resource "aws_security_group" "ceph_sec_grp" {
 resource "aws_instance" "cluster_member" {
   count = var.cluster_member_count
   #ami                         = "ami-0885b1f6bd170450c"
-  ami                         = "ami-0e7ad70170b787201"
+  ami                         = "ami-0015b9ef68c77328d"
   subnet_id                   = var.subnet_id
   instance_type               = "t2.micro"
   associate_public_ip_address = true
@@ -65,9 +65,9 @@ resource "null_resource" "cluster_hosts" {
     inline = [
       # Adds all cluster members' IP addresses to /etc/hosts (on each member)
       "echo '${join("\n", formatlist("%v", aws_instance.cluster_member.*.private_ip))}' | awk 'BEGIN{ print \"\\n\\n# Cluster members:\" }; { print $0 \" ${var.cluster_member_name_prefix}\"  NR-1  }' | sudo tee -a /etc/hosts > /dev/null",
-      "sudo dnf install epel-release -y > /dev/null",
-      "sudo dnf install podman chrony sshpass python3 -y > /dev/null",
-      "sudo systemctl restart chronyd",
+      
+      "sudo yum install docker chrony sshpass python3 -y > /dev/null",
+      "sudo systemctl restart chronyd && sudo systemctl restart docker",
       "sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config",
       "echo redhat | sudo passwd --stdin centos",
       "echo redhat | sudo passwd --stdin root",
@@ -155,7 +155,7 @@ resource "null_resource" "set_hostname_0" {
       "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-0",
       "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-1",
       "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-2",
-      #"alias ceph=\"cephadm shell -- ceph\"",
+      "alias ceph=\"cephadm shell -- ceph\"",
       "sudo -s cephadm shell -- ceph orch host add node-1 $node1",
       "sudo -s cephadm shell -- ceph orch host add node-2 $node2",
       "sudo -s cephadm shell -- ceph orch apply mon 3",
@@ -165,7 +165,13 @@ resource "null_resource" "set_hostname_0" {
   }
 }
 
-output "cluster_ip" {
+output "admin_ip" {
   value = aws_instance.cluster_member[0].public_ip
+}
+output "node1_ip" {
+  value = aws_instance.cluster_member[1].public_ip
+}
+output "node2_ip" {
+  value = aws_instance.cluster_member[2].public_ip
 }
 
