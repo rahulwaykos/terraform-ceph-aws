@@ -31,7 +31,8 @@ resource "aws_security_group" "ceph_sec_grp" {
 # EC2 instances
 resource "aws_instance" "cluster_member" {
   count = var.cluster_member_count
-  ami                         = "ami-0015b9ef68c77328d"
+  #ami                         = "ami-0885b1f6bd170450c"
+  ami                         = "ami-0e7ad70170b787201"
   subnet_id                   = var.subnet_id
   instance_type               = "t2.micro"
   associate_public_ip_address = true
@@ -64,7 +65,8 @@ resource "null_resource" "cluster_hosts" {
     inline = [
       # Adds all cluster members' IP addresses to /etc/hosts (on each member)
       "echo '${join("\n", formatlist("%v", aws_instance.cluster_member.*.private_ip))}' | awk 'BEGIN{ print \"\\n\\n# Cluster members:\" }; { print $0 \" ${var.cluster_member_name_prefix}\"  NR-1  }' | sudo tee -a /etc/hosts > /dev/null",
-      "sudo yum install podman chrony sshpass python3 -y > /dev/null",
+      "sudo dnf install epel-release -y > /dev/null",
+      "sudo dnf install podman chrony sshpass python3 -y > /dev/null",
       "sudo systemctl restart chronyd",
       "sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config",
       "echo redhat | sudo passwd --stdin centos",
@@ -129,8 +131,8 @@ resource "null_resource" "set_hostname_0" {
   connection {
     type = "ssh"
     host = "${element(aws_instance.cluster_member.*.public_ip, 0)}"
-    user = "root"
-    password = "redhat"
+    user = "centos"
+    private_key = file(var.private_key_path)
   }
 
   provisioner "remote-exec" {
@@ -140,25 +142,25 @@ resource "null_resource" "set_hostname_0" {
       "sudo hostnamectl set-hostname node-0 ",
   
       "curl --silent --remote-name --location https://github.com/ceph/ceph/raw/octopus/src/cephadm/cephadm",
-      "chmod +x cephadm",
-      "./cephadm add-repo --release octopus",
-      "./cephadm install",
-      "mkdir -p /etc/ceph",
+      "sudo -s chmod +x cephadm",
+      "sudo -s ./cephadm add-repo --release octopus",
+      "sudo -s ./cephadm install",
+      "sudo -s mkdir -p /etc/ceph",
       "node0=$(cut -d \" \" -f 1 /etc/hosts | tail -3 | head -1)",
       "node1=$(cut -d \" \" -f 1 /etc/hosts | tail -2 | head -1 )",
       "node2=$(cut -d \" \" -f 1 /etc/hosts | tail -1)",
-      "cephadm bootstrap --mon-ip $node0 --output-dir /etc/ceph --skip-mon-network ",
-      "cephadm add-repo --release octopus",
-      "cephadm install ceph-common",
-      "sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-0",
-      "sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-1",
-      "sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-2",
+      "sudo -s cephadm bootstrap --mon-ip $node0  ",
+      "sudo -s cephadm add-repo --release octopus",
+      "sudo -s cephadm install ceph-common",
+      "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-0",
+      "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-1",
+      "sudo -s sshpass -p redhat ssh-copy-id -f -i /etc/ceph/ceph.pub -o StrictHostKeyChecking=no root@node-2",
       #"alias ceph=\"cephadm shell -- ceph\"",
-      "cephadm shell -- ceph orch host add node-1 $node1",
-      "cephadm shell -- ceph orch host add node-2 $node2",
-      "cephadm shell -- ceph orch apply mon 3",
-      "cephadm shell -- ceph orch apply mon node-0,node-1,node-2",
-      "cephadm shell -- ceph orch apply osd --all-available-devices",
+      "sudo -s cephadm shell -- ceph orch host add node-1 $node1",
+      "sudo -s cephadm shell -- ceph orch host add node-2 $node2",
+      "sudo -s cephadm shell -- ceph orch apply mon 3",
+      "sudo -s cephadm shell -- ceph orch apply mon node-0,node-1,node-2",
+      "sudo -s cephadm shell -- ceph orch apply osd --all-available-devices",
     ]
   }
 }
